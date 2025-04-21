@@ -29,7 +29,7 @@ except ImportError:
 SAMPLE_RATE = 44100
 N_MFCC = 40  # Number of MFCC features to extract
 N_FFT = 2048  # FFT window size
-HOP_LENGTH = 512  # Hop length for FFT
+HOP_LENGTH = 512*4  # Hop length for FFT
 
 # Demucs settings
 DEMUCS_MODEL = "htdemucs"  # The pre-trained model to use
