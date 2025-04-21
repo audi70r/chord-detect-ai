@@ -604,15 +604,17 @@ def classify_chord(model, features, chord_mapping):
         return "Unknown"
 
 
-def process_audio_file(audio_path, model, chord_mapping):
+def process_audio_file(audio_path, model, chord_mapping, use_beat_based=False, beats_per_bar=4):
     """
-    Process an audio file to detect beats, group into bars, and classify chords.
-    Each bar (typically 4 beats) gets one chord assignment.
+    Process an audio file to detect beats, group into segments, and classify chords.
+    Each segment (bar or beat) gets one chord assignment.
     
     Args:
         audio_path: Path to the audio file
         model: Trained TensorFlow model
         chord_mapping: DataFrame with chord mapping
+        use_beat_based: If True, use beat-based segmentation; otherwise use bar-based
+        beats_per_bar: Number of beats per bar (for bar-based segmentation)
         
     Returns:
         results: Dictionary with BPM and chord information
@@ -653,41 +655,52 @@ def process_audio_file(audio_path, model, chord_mapping):
         
         print(f"Detected {len(beats)} beats at tempo {tempo:.1f} BPM")
         
-        # Calculate beats per half-bar - using 2 beats per half-bar (in 4/4 time)
-        # This allows for chord changes that happen in the middle of a bar
-        BEATS_PER_HALF_BAR = 2
-        print(f"Using {BEATS_PER_HALF_BAR} beats per segment (half-bar analysis)")
-        
-        # Group beats into half-bars
-        half_bars = []
-        half_bar_times = []
-        
-        for i in range(0, len(beats), BEATS_PER_HALF_BAR):
-            if i + 1 < len(beats):  # Need at least 2 beats to define a segment
-                segment_start = beats[i]
-                segment_start_time = beat_times[i]
-                
-                # Determine segment end
-                if i + BEATS_PER_HALF_BAR < len(beats):
-                    # Full half-bar available
-                    segment_end = beats[i + BEATS_PER_HALF_BAR]
-                else:
-                    # Use remaining beats for final segment
-                    segment_end = beats[-1] + (beats[-1] - beats[-2])  # Extrapolate one more beat
+        # Determine segmentation approach (bar-based or beat-based)
+        if use_beat_based:
+            print("Using beat-based analysis (each beat is a segment)")
+            segments = [(int(beats[i]), int(beats[i+1] if i+1 < len(beats) else beats[i] + (beats[i] - beats[i-1]))) 
+                        for i in range(len(beats)) if i+1 < len(beats) or i > 0]
+            segment_times = [beat_times[i] for i in range(len(beat_times)) if i < len(segments)]
+            print(f"Created {len(segments)} beat segments")
+        else:
+            # Bar-based approach (default)
+            print(f"Using {beats_per_bar} beats per segment (bar-based analysis)")
+            segments = []
+            segment_times = []
+            
+            for i in range(0, len(beats), beats_per_bar):
+                if i + 1 < len(beats):  # Need at least 2 beats to define a segment
+                    segment_start = beats[i]
+                    segment_start_time = beat_times[i]
                     
-                half_bars.append((int(segment_start), int(segment_end)))
-                half_bar_times.append(segment_start_time)
+                    # Determine segment end
+                    if i + beats_per_bar < len(beats):
+                        # Full bar available
+                        segment_end = beats[i + beats_per_bar]
+                    else:
+                        # Use remaining beats for final segment
+                        # Calculate average beat duration from the last few beats
+                        last_beats = beats[-3:] if len(beats) >= 3 else beats[-2:]
+                        avg_beat_duration = np.mean(np.diff(last_beats))
+                        # Extrapolate to the end of the bar
+                        beats_remaining = beats_per_bar - (len(beats) % beats_per_bar)
+                        if beats_remaining == beats_per_bar:
+                            beats_remaining = 0
+                        segment_end = beats[-1] + int(avg_beat_duration * beats_remaining)
+                        
+                    segments.append((int(segment_start), int(segment_end)))
+                    segment_times.append(segment_start_time)
+            
+            print(f"Created {len(segments)} bar segments")
         
-        if not half_bars:
-            print("Could not group beats into half-bars.")
+        if not segments:
+            print("Could not create segments from beats.")
             return {"bpm": 0, "chords": []}
             
-        print(f"Grouped beats into {len(half_bars)} half-bar segments")
-        
-        # Calculate median half-bar duration for feature extraction
-        segment_durations = [(end - start) / sr for start, end in half_bars]
+        # Calculate median segment duration for feature extraction
+        segment_durations = [(end - start) / sr for start, end in segments]
         median_segment_duration = np.median(segment_durations)
-        print(f"Median half-bar duration: {median_segment_duration:.3f} seconds")
+        print(f"Median segment duration: {median_segment_duration:.3f} seconds")
         
         # Initialize results
         results = {
@@ -695,19 +708,23 @@ def process_audio_file(audio_path, model, chord_mapping):
             "chords": []
         }
         
-        # Process each half-bar segment
-        print("Classifying chords for each half-bar segment...")
-        for i, ((segment_start, segment_end), segment_time) in enumerate(zip(half_bars, half_bar_times)):
+        # Process each segment (bar or beat)
+        segment_type = "beat" if use_beat_based else "bar"
+        print(f"Classifying chords for each {segment_type} segment...")
+        for i, ((segment_start, segment_end), segment_time) in enumerate(zip(segments, segment_times)):
             try:
-                # Get audio segment for the half-bar from the HARMONIC audio
+                # Get audio segment from the HARMONIC audio
                 # Ensure we don't go out of bounds
                 if segment_end > len(harmonic_audio):
                     segment_end = len(harmonic_audio)
                     
                 segment_audio = harmonic_audio[segment_start:segment_end]
                 
+                # Determine minimum segment duration based on segmentation type
+                min_segment_duration = sr * 0.5 if not use_beat_based else sr * 0.1
+                
                 # Skip segments that are too short
-                if len(segment_audio) < sr * 0.25:  # Skip segments shorter than 250ms
+                if len(segment_audio) < min_segment_duration:
                     print(f"Skipping segment {i+1} - too short: {len(segment_audio)/sr:.3f}s")
                     continue
                 
@@ -723,11 +740,11 @@ def process_audio_file(audio_path, model, chord_mapping):
                     # Use actual segment duration
                     dynamic_duration = segment_duration
                 
-                # Extract features for the half-bar segment
+                # Extract features for the segment
                 features = extract_features(segment_audio, sr, dynamic_duration)
                 
                 if features is not None:
-                    # Classify chord for the half-bar
+                    # Classify chord for the segment
                     chord = classify_chord(model, features, chord_mapping)
                     
                     # Calculate start time in milliseconds
@@ -740,8 +757,9 @@ def process_audio_file(audio_path, model, chord_mapping):
                     })
                     
                     # Keep console output cleaner by only printing every few segments
-                    if i % 4 == 0 or i < 10:
-                        print(f"Segment {i+1}: {chord} at {start_time_ms}ms (duration: {segment_duration:.3f}s)")
+                    display_interval = 4 if not use_beat_based else 8  # Show fewer messages for beat-based
+                    if i % display_interval == 0 or i < 10:
+                        print(f"{segment_type.title()} {i+1}: {chord} at {start_time_ms}ms (duration: {segment_duration:.3f}s)")
             except Exception as e:
                 print(f"Error processing segment {i+1}: {e}")
                 continue
@@ -848,6 +866,8 @@ def main():
         print("Options:")
         print("  --no-demucs               Disable Demucs source separation")
         print("  --output=<file_path>      Specify output JSON file path")
+        print("  --beat-based              Use beat-based segmentation (default is bar-based)")
+        print("  --beats-per-bar=<num>     Specify beats per bar (default is 4 for 4/4 time)")
         sys.exit(1)
     
     # Parse command line arguments
@@ -856,6 +876,8 @@ def main():
     # Parse options
     use_demucs = True
     output_path = OUTPUT_PATH
+    use_beat_based = False
+    beats_per_bar = 4  # Default to 4/4 time
     
     for arg in sys.argv[2:]:
         if arg == "--no-demucs":
@@ -864,6 +886,16 @@ def main():
         elif arg.startswith("--output="):
             output_path = arg.split("=")[1]
             print(f"Output will be saved to {output_path}")
+        elif arg == "--beat-based":
+            use_beat_based = True
+            print("Using beat-based segmentation")
+        elif arg.startswith("--beats-per-bar="):
+            try:
+                beats_per_bar = int(arg.split("=")[1])
+                print(f"Using {beats_per_bar} beats per bar")
+            except ValueError:
+                print(f"Warning: Invalid beats per bar value. Using default of 4.")
+                beats_per_bar = 4
     
     # Check if audio file exists
     if not os.path.exists(audio_path):
@@ -902,12 +934,21 @@ def main():
     
     # Process audio file
     print("\n--- Starting chord detection process ---\n")
-    results = process_audio_file(audio_path, model, chord_mapping)
+    results = process_audio_file(audio_path, model, chord_mapping, 
+                                use_beat_based=use_beat_based, 
+                                beats_per_bar=beats_per_bar)
     
     # Post-process: Filter out unlikely rapid chord changes
     print("\n--- Post-processing chord detection results ---")
-    # First, set a minimum duration threshold (e.g., 200ms between chord changes)
-    min_duration_ms = 200
+    # Set a minimum duration threshold based on segmentation type
+    if use_beat_based:
+        # For beat-based analysis, use a shorter threshold
+        min_duration_ms = 200  # 200ms between chord changes
+    else:
+        # For bar-based analysis, we expect longer durations between changes
+        min_duration_ms = 1000  # 1 second minimum for bar-based
+    
+    print(f"Using minimum duration threshold of {min_duration_ms}ms between chord changes")
     filtered_chords = []
     
     # Apply a simple smoothing filter

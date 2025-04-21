@@ -203,7 +203,7 @@ Classifies a chord using the trained model.
 **Returns:**
 - Predicted chord name
 
-#### `process_audio_file(audio_path, model, chord_mapping)`
+#### `process_audio_file(audio_path, model, chord_mapping, use_beat_based=False, beats_per_bar=4)`
 
 Processes an audio file to detect chord progression.
 
@@ -211,6 +211,8 @@ Processes an audio file to detect chord progression.
 - `audio_path`: Path to the audio file
 - `model`: Trained TensorFlow model
 - `chord_mapping`: DataFrame with chord mapping
+- `use_beat_based`: If True, use beat-based segmentation; otherwise use bar-based (default: False)
+- `beats_per_bar`: Number of beats per bar for bar-based segmentation (default: 4)
 
 **Returns:**
 - Dictionary with BPM and chord information
@@ -353,6 +355,8 @@ Usage: python infer.py <audio_file_path> [options]
 Options:
   --no-demucs               Disable Demucs source separation
   --output=<file_path>      Specify output JSON file path
+  --beat-based              Use beat-based segmentation (default is bar-based)
+  --beats-per-bar=<num>     Specify beats per bar (default is 4 for 4/4 time)
 ```
 
 ### midi.py

@@ -117,7 +117,7 @@ python midi.py song_chords.json song_chords.mid
 ### Example 1: Analyzing a Pop Song
 
 ```bash
-# Analyze a pop song
+# Analyze a pop song with bar-based segmentation (default)
 python infer.py pop_song.mp3
 
 # Convert to MIDI
@@ -128,11 +128,11 @@ python midi.py results.json
 
 ### Example 2: Transcribing a Jazz Recording
 
-Jazz recordings often have complex harmonies:
+Jazz recordings often have complex harmonies and may benefit from beat-based segmentation for greater detail:
 
 ```bash
-# For jazz recordings, source separation is particularly important
-python infer.py jazz_recording.mp3
+# For jazz recordings, beat-based segmentation can capture faster chord changes
+python infer.py jazz_recording.mp3 --beat-based
 
 # Check the detected chords
 cat results.json
@@ -141,14 +141,30 @@ cat results.json
 python midi.py results.json jazz_chords.mid
 ```
 
-### Example 3: Learning from a Song
+### Example 3: Analyzing Different Time Signatures
+
+For music in different time signatures:
+
+```bash
+# For a song in 3/4 time (waltz)
+python infer.py waltz_song.mp3 --beats-per-bar=3
+
+# For a song in 6/8 time
+python infer.py compound_meter_song.mp3 --beats-per-bar=6
+
+# Convert to MIDI
+python midi.py results.json
+```
+
+### Example 4: Learning from a Song
 
 ```bash
 # Analyze a song you want to learn
 python infer.py song_to_learn.mp3
 
-# Convert to MIDI
-python midi.py results.json
+# Try both segmentation methods and compare
+python infer.py song_to_learn.mp3 --beat-based --output=beat_based_results.json
+python midi.py beat_based_results.json beat_based.mid
 
 # Import the MIDI into notation software to create sheet music
 ```
@@ -186,6 +202,22 @@ If the chord timing seems off:
 2. For rubato or tempo-changing music, try analyzing smaller sections
 
 ## Advanced Usage
+
+### Comparing Segmentation Methods
+
+To compare the results of different segmentation approaches:
+
+```bash
+# Bar-based segmentation (default)
+python infer.py your_song.mp3 --output=bar_results.json
+python midi.py bar_results.json bar_chords.mid
+
+# Beat-based segmentation
+python infer.py your_song.mp3 --beat-based --output=beat_results.json
+python midi.py beat_results.json beat_chords.mid
+
+# Compare the two MIDI files in your DAW
+```
 
 ### Retraining the Model
 

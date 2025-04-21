@@ -74,6 +74,8 @@ Results will be saved to `results.json`.
 Options:
 - `--no-demucs`: Disable source separation
 - `--output=filename.json`: Specify custom output path
+- `--beat-based`: Use beat-based segmentation (default is bar-based)
+- `--beats-per-bar=<num>`: Specify beats per bar (default is 4 for 4/4 time)
 
 ### 4. Generate MIDI
 

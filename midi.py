@@ -245,12 +245,14 @@ def create_midi_file(json_data, output_path):
             track1.append(Message('note_on', note=note, velocity=DEFAULT_VELOCITY, time=delta_ticks))
             delta_ticks = 0  # Only the first note has the delta time
         
-        # Add note_off events (after the duration)
-        for j, note in enumerate(midi_notes):
-            if j == len(midi_notes) - 1:
-                # Only the last note_off includes the duration
-                track1.append(Message('note_off', note=note, velocity=0, time=duration_ticks))
-            else:
+        # Add a single note_off event that sustains the entire chord
+        # This creates a sustained chord where all notes end at the same time
+        if midi_notes:
+            # Add the duration to the first note_off event
+            track1.append(Message('note_off', note=midi_notes[0], velocity=0, time=duration_ticks))
+            
+            # All subsequent note_offs happen simultaneously with the first one
+            for note in midi_notes[1:]:
                 track1.append(Message('note_off', note=note, velocity=0, time=0))
         
         # Update previous end time

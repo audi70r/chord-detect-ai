@@ -9,12 +9,20 @@ The inference pipeline consists of multiple stages that transform raw audio into
 ```mermaid
 flowchart TD
     A[Audio Input] --> B[Source Separation]
-    B --> C[Beat & Segment Detection]
-    C --> D[Feature Extraction]
-    D --> E[Chord Classification]
-    E --> F[Post-processing]
-    F --> G[JSON Output]
-    G --> H[MIDI Conversion]
+    B --> C[Beat Detection]
+    C --> D[Segmentation]
+    D --> E[Feature Extraction]
+    E --> F[Chord Classification]
+    F --> G[Post-processing]
+    G --> H[JSON Output]
+    H --> I[MIDI Conversion]
+    
+    subgraph "Segmentation Methods"
+        J[Bar-based Segmentation]
+        K[Beat-based Segmentation]
+    end
+    
+    Segmentation Methods --> D
 ```
 
 ## 1. Audio Loading
@@ -70,9 +78,9 @@ def separate_sources(audio, sr=SAMPLE_RATE):
     return combined_harmonic, instruments_only
 ```
 
-## 3. Beat & Segment Detection
+## 3. Beat Detection
 
-The system uses a multi-strategy approach to identify meaningful segments in the audio:
+The system uses a multi-strategy approach to identify beats in the audio:
 
 ```mermaid
 flowchart TD
@@ -92,7 +100,7 @@ flowchart TD
     H --> Z
 ```
 
-The function tries multiple strategies in sequence until one succeeds:
+The beat detection function tries multiple strategies in sequence until one succeeds:
 
 1. **Enhanced Beat Tracking**: Uses tempo estimation and beat tracking algorithms
 2. **Multi-feature Onset Detection**: Combines multiple onset detection functions
@@ -119,7 +127,63 @@ def detect_beats(audio, sr):
     # ...
 ```
 
-## 4. Feature Extraction
+## 4. Segmentation
+
+After beat detection, the system offers two different segmentation approaches:
+
+```mermaid
+graph TD
+    A[Detected Beats] --> B{Segmentation Type}
+    B -->|Bar-based| C[Group Beats into Bars]
+    B -->|Beat-based| D[Use Individual Beats]
+    
+    C --> E[Complete Bars]
+    C --> F[Handle Incomplete Final Bar]
+    
+    E --> G[Analyze Segments]
+    F --> G
+    D --> G
+```
+
+### Bar-based Segmentation (Default)
+
+The bar-based approach groups beats into musical bars (measures), typically containing 4 beats each:
+
+```python
+# Bar-based approach (default)
+print(f"Using {beats_per_bar} beats per segment (bar-based analysis)")
+segments = []
+segment_times = []
+
+for i in range(0, len(beats), beats_per_bar):
+    if i + 1 < len(beats):  # Need at least 2 beats to define a segment
+        segment_start = beats[i]
+        segment_start_time = beat_times[i]
+        
+        # Determine segment end
+        if i + beats_per_bar < len(beats):
+            # Full bar available
+            segment_end = beats[i + beats_per_bar]
+        else:
+            # Use remaining beats for final segment
+            # Calculate average beat duration
+            # Extrapolate to the end of the bar
+            # ...
+```
+
+### Beat-based Segmentation
+
+For more granular analysis, the beat-based approach treats each beat as a separate segment:
+
+```python
+# Beat-based approach
+print("Using beat-based analysis (each beat is a segment)")
+segments = [(int(beats[i]), int(beats[i+1] if i+1 < len(beats) else beats[i] + (beats[i] - beats[i-1]))) 
+            for i in range(len(beats)) if i+1 < len(beats) or i > 0]
+segment_times = [beat_times[i] for i in range(len(beat_times)) if i < len(segments)]
+```
+
+## 5. Feature Extraction
 
 Once segments are identified, MFCC features are extracted for each segment:
 
@@ -174,7 +238,7 @@ def extract_features(audio_segment, sr=SAMPLE_RATE, dynamic_duration=None):
     # ...
 ```
 
-## 5. Chord Classification
+## 6. Chord Classification
 
 The trained model predicts chord types for each segment:
 
@@ -202,7 +266,7 @@ def classify_chord(model, features, chord_mapping):
     # ...
 ```
 
-## 6. Post-processing
+## 7. Post-processing
 
 To improve results, several post-processing steps are applied:
 
@@ -212,6 +276,13 @@ flowchart TD
     B --> C[Apply Voting Window]
     C --> D[Merge Consecutive Identical Chords]
     D --> E[Final Chord Progression]
+    
+    subgraph "Different Thresholds"
+        F[Bar-based: 1000ms minimum]
+        G[Beat-based: 200ms minimum]
+    end
+    
+    Different Thresholds --> B
 ```
 
 This smoothing process removes unlikely rapid chord changes:
@@ -243,7 +314,7 @@ if results["chords"]:
                 # ...
 ```
 
-## 7. Output Generation
+## 8. Output Generation
 
 The final results are saved as a JSON file with chord names and timestamps:
 
@@ -266,14 +337,23 @@ The JSON output can be converted to MIDI using the `midi.py` script.
 To run the inference pipeline:
 
 ```bash
-# Basic usage
+# Basic usage (bar-based by default)
 python infer.py song.mp3
+
+# Using beat-based segmentation
+python infer.py song.mp3 --beat-based
+
+# Specify custom time signature (e.g., 3/4 time)
+python infer.py song.mp3 --beats-per-bar=3
 
 # Without source separation
 python infer.py song.mp3 --no-demucs
 
 # With custom output path
 python infer.py song.mp3 --output=results_song.json
+
+# Combined options
+python infer.py song.mp3 --beat-based --no-demucs --output=custom_results.json
 ```
 
 ## Error Handling
