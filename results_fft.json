@@ -1,0 +1,125 @@
+{
+  "bpm": 101.33272058823529,
+  "chords": [
+    {
+      "start": 290,
+      "chord": "A9"
+    },
+    {
+      "start": 2693,
+      "chord": "D9"
+    },
+    {
+      "start": 5050,
+      "chord": "B9"
+    },
+    {
+      "start": 7407,
+      "chord": "D9"
+    },
+    {
+      "start": 9775,
+      "chord": "B9"
+    },
+    {
+      "start": 12120,
+      "chord": "D9"
+    },
+    {
+      "start": 14477,
+      "chord": "E9"
+    },
+    {
+      "start": 16846,
+      "chord": "E9"
+    },
+    {
+      "start": 19202,
+      "chord": "E9"
+    },
+    {
+      "start": 21548,
+      "chord": "D9"
+    },
+    {
+      "start": 23916,
+      "chord": "D9"
+    },
+    {
+      "start": 26273,
+      "chord": "E9"
+    },
+    {
+      "start": 28618,
+      "chord": "E9"
+    },
+    {
+      "start": 30975,
+      "chord": "E9"
+    },
+    {
+      "start": 33320,
+      "chord": "E9"
+    },
+    {
+      "start": 35654,
+      "chord": "E9"
+    },
+    {
+      "start": 38022,
+      "chord": "A9"
+    },
+    {
+      "start": 40367,
+      "chord": "D9"
+    },
+    {
+      "start": 42689,
+      "chord": "D9"
+    },
+    {
+      "start": 45046,
+      "chord": "D9"
+    },
+    {
+      "start": 47368,
+      "chord": "E9"
+    },
+    {
+      "start": 49737,
+      "chord": "E9"
+    },
+    {
+      "start": 52093,
+      "chord": "E9"
+    },
+    {
+      "start": 54462,
+      "chord": "B9"
+    },
+    {
+      "start": 56819,
+      "chord": "E9"
+    },
+    {
+      "start": 59210,
+      "chord": "D9"
+    },
+    {
+      "start": 61579,
+      "chord": "D9"
+    },
+    {
+      "start": 63947,
+      "chord": "A9"
+    },
+    {
+      "start": 66316,
+      "chord": "F#9"
+    },
+    {
+      "start": 68696,
+      "chord": "D9"
+    }
+  ]
+}
