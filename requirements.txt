@@ -1,0 +1,13 @@
+numpy>=1.20.0
+pydub>=0.25.1
+librosa>=0.9.1
+matplotlib>=3.5.1
+tensorflow>=2.8.0
+scikit-learn>=1.0.2
+pandas>=1.4.1
+pychord>=1.2.2
+mido>=1.2.10
+python-rtmidi>=1.4.9  # Optional backend for mido
+demucs>=4.0.0  # For music source separation
+torch>=1.9.0  # Required for demucs
+soundfile>=0.10.0  # For audio file handling

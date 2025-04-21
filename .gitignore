@@ -1,0 +1,39 @@
+# Ignore database file
+chords.db
+
+# Ignore virtual environment
+.venv/
+venv/
+env/
+
+# Ignore chord segments folder
+chord_segments/
+
+# Ignore model files
+*.h5
+
+# Ignore results
+results.json
+output.midi
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# macOS
+.DS_Store
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
